@@ -1,0 +1,186 @@
+//Api IqOption
+!sudo pip install -U git+git://github.com/Lu-Yi-Hsun/iqoptionapi.git
+//Importação de bibliotecas
+  import time
+  from iqoptionapi.stable_api import IQ_Option
+  import time
+  import numpy as np
+  import pandas as pd
+  from datetime import datetime
+  
+  //Dados de acesso, Moeda e parametros da estrategia.
+  email = 'email' # E-mail para login
+  senha = 'senha' # Senha para Login
+  media_simples = 21 # Media Movel Simples
+  media_expo = 100 # Media Movel Exponecial
+  time_frame_maior = 900 #Segundos M15
+  time_frame_menor = 60 # Segundos M1
+  tipo_de_conta = 'REAL' # ou REAL
+  duracao = 1 #Minuto
+  moeda = 'EURUSD'
+  
+  // Input de dados de Login
+ I_want_money=IQ_Option(email,senha)
+logado = I_want_money.connect()
+if logado:
+  print("Logado com sucesso")
+else:
+  print("E-mail ou senha incorretos")
+try:
+    I_want_money.change_balance(tipo_de_conta)
+except:
+  print("Erro: Digite 'PRACTICE' ou 'REAL'")
+print(f"Você esta usando a conta {tipo_de_conta}")
+
+  //Funçoes das medias
+ def mediaExpo(candle_dados1):
+  k = 2 / len(candle_dados1) + 1
+  media1=mediaSimples(candle_dados1)
+  media100 = [media1]
+  for i in range(100):
+     n = ((candle_dados1[i] - media100[i-1])*k) +  media100[i-1]
+     media100.append(n)
+  M100 = sum(media100) / len(media100)
+  return M100
+
+def mediaSimples(candle_dados2):
+  media21 = []
+  for i in range(21):
+     n = candle_dados2[i]
+     media21.append(n)
+  M21 = sum(media21) / len(media21)
+  return M21
+      
+      // Definiçoes e dados da estrategia
+      def verifica(candle_dados1, candle_dados2, media_de_expo_candle1, media_de_simples_candle1, media_de_expo_candle2, media_de_simples_candle2):
+  print("Esta na hora de entrar:")
+  print('MEDIA S_21: ',media_de_expo_candle1)
+  print('MEDIA EXP_100: ',media_de_expo_candle2)
+  if (candle_dados1[-1] < media_de_simples_candle1) and (candle_dados1[-1] < media_de_expo_candle1):
+      if (candle_dados2[-1] < media_de_simples_candle2) and (candle_dados2[-1] < media_de_expo_candle2):
+        acao = 'put'
+        return acao
+
+  elif (candle_dados1[-1] > media_de_simples_candle1) and (candle_dados1[-1] > media_de_expo_candle1):
+      if (candle_dados2[-1] > media_de_simples_candle2) and (candle_dados2[-1] > media_de_expo_candle2):
+        acao = 'call'
+        return acao
+  else:
+      print("Exigencias da estrategia não foram satisfeitas.")
+      acao = None
+      return acao
+      //Calculos das medias e barras
+      def get(I_want_money):
+  end_from_time=time.time()
+  busca_candles1 = I_want_money.get_candles(moeda, time_frame_maior, 100, end_from_time) # Candle de M15
+  busca_candles2 = I_want_money.get_candles(moeda, time_frame_menor, 100, end_from_time) # Candle de M1
+
+  busca_candles1 = pd.DataFrame(busca_candles1)
+  busca_candles2 = pd.DataFrame(busca_candles2)
+
+  candle_dados1 = busca_candles1.iloc[:, [5]].values #  M15
+  candle_dados2 = busca_candles2.iloc[:, [5]].values #  M1
+  
+  candle_dados1_maior = busca_candles1.iloc[:, [5]].values # 100 - de M15
+  candle_dados2_maior = busca_candles2.iloc[:, [5]].values # 100 - de M1
+
+  candle_dados1_menor = busca_candles1.iloc[79:, [5]].values # 21 de M15
+  candle_dados2_menor = busca_candles2.iloc[79:, [5]].values # 21 de M1
+  
+  media_de_expo_candle1 = mediaExpo(candle_dados1_maior) # media Expo de M15
+  media_de_simples_candle1 = mediaSimples(candle_dados1_menor) # Media Simples de M15
+
+  media_de_expo_candle2 = mediaExpo(candle_dados2_maior) # media Expo de M1
+  media_de_simples_candle2 = mediaSimples(candle_dados2_menor) # media Simples de M1 
+
+  return candle_dados1, candle_dados2, media_de_expo_candle1, media_de_simples_candle1, media_de_expo_candle2, media_de_simples_candle2
+  
+  //Script das ordens e martingale
+  porcentagem = 0.5 # ALTERE AQUI -  Define a porcentagem da entrada
+porcentagem = porcentagem / 100
+
+while True:
+  opera = False
+  banca_atual = I_want_money.get_balance()
+  valor_entrada = banca_atual * porcentagem
+  minutos = float(((datetime.now()).strftime('%M.%S')))
+  #time.sleep(1)
+  entrar = True if (minutos >= 4.59 and minutos <= 5) or (minutos >= 9.59 and minutos <= 10) or (minutos >= 14.59 and minutos <= 15) or (minutos >= 19.59 and minutos <= 20) or (minutos >= 24.59 and minutos <= 25) or (minutos >= 29.59 and minutos <= 30) or (minutos >= 34.59 and minutos <= 35) or (minutos >= 39.59 and minutos <= 40) or (minutos >= 44.59 and minutos <= 45) or (minutos >= 49.59 and minutos <= 50) or (minutos >= 54.59 and minutos <= 55) or (minutos >= 59.59 and minutos <= 00) else False
+  #entrar = True
+
+  if entrar:
+    candle_dados1, candle_dados2, media_de_expo_candle1, media_de_simples_candle1, media_de_expo_candle2, media_de_simples_candle2 = get(I_want_money)
+    acao = verifica(candle_dados1, candle_dados2, media_de_expo_candle1, media_de_simples_candle1, media_de_expo_candle2, media_de_simples_candle2)
+    print(f"Operando da moeda: {moeda}")
+    if acao == 'put':
+      print(f"Put no valor de {valor_entrada} as {minutos} minutos - expiração de {duracao}")
+      _ ,id=(I_want_money.buy_digital_spot(moeda,valor_entrada,acao,duracao))
+      if id !="error":
+          try:
+              while True:
+                check,win=I_want_money.check_win_digital_v2(id)
+                if check==True:
+                  break    
+          except TypeError:
+                print("----------------------ATENCAO------------------------")
+                print(f"Essa moeda {moeda} não esta ativa no momento na IqOption")
+          if win<0: # se a moeda não estiver disponivel no momento na IqOption ele vai acusar o erro nessa linha e mostrar o print acima.
+                print("Perdeu")
+          # ---------------------- 1 Martin Gale ----------------------------------------
+ 
+                valor_entrada_gale1 = 1.7 * valor_entrada
+                candle_dados1, candle_dados2, media_de_expo_candle1, media_de_simples_candle1, media_de_expo_candle2, media_de_simples_candle2 = get(I_want_money)
+                acao = verifica(candle_dados1, candle_dados2, media_de_expo_candle1, media_de_simples_candle1, media_de_expo_candle2, media_de_simples_candle2)
+                id = None
+                if acao != None:
+                  _,id=(I_want_money.buy_digital_spot(moeda,valor_entrada_gale1,acao,duracao))
+                  print(f"Entrando no 1 Martin Gale valor: {valor_entrada_gale1}")
+                if id !="error" and id != None:
+                    while True:
+                        check,win=I_want_money.check_win_digital_v2(id)
+                        if check==True:
+                           break
+                    if win<0:
+                        print("Perdeu")
+                         # ---------------------- 2 Martin Gale ----------------------------------------
+                        valor_entrada_gale2 = 1.7 * valor_entrada_gale1
+                        candle_dados1, candle_dados2, media_de_expo_candle1, media_de_simples_candle1, media_de_expo_candle2, media_de_simples_candle2 = get(I_want_money)
+                        acao = verifica(candle_dados1, candle_dados2, media_de_expo_candle1, media_de_simples_candle1, media_de_expo_candle2, media_de_simples_candle2)
+                        id = None
+                        if acao != None:
+                          _,id=(I_want_money.buy_digital_spot(moeda,valor_entrada_gale2,acao,duracao))
+                          print(f"Entrando no 2 Martin Gale valor: {valor_entrada_gale2}")
+                        if id !="error" and id != None:
+                          while True:
+                             check,win=I_want_money.check_win_digital_v2(id)
+                             if check==True:
+                                  break
+                          if win<0:
+                              print("Perdeu")   
+                          else:
+                            print("Ganhou")
+                        else:
+                          print("Martin Gale cancelado")    
+                    else:
+                      print("Ganhou")     
+                else:
+                  print("Martin Gale cancelado")
+          else:
+              print("Ganhou")
+      else:
+        print("Ganhou")
+    elif acao == "call":
+      print(f"Call no valor de {valor_entrada} as {minutos} minutos - expiração de {duracao}")
+      _ ,id=(I_want_money.buy_digital_spot(moeda,valor_entrada,acao,duracao))
+      if id !="error":
+          try:
+              while True:
+                check,win=I_want_money.check_win_digital_v2(id)
+                if check==True:
+                  break                 
+          except TypeError:
+                print("----------------------ATENCAO------------------------")
+                print(f"Essa moeda {moeda} não esta ativa no momento na IqOption")
+          if win<0: # se a moeda não estiver disponivel no momento na IqOption ele vai acusar o erro nessa linha e mostrar o print acima.
+                print("Perdeu")
+  
